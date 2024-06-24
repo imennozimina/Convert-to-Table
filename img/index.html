@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert to Table</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+        }
+        textarea, input, button, label {
+            font-size: 16px;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 100%;
+            max-width: 600px;
+        }
+        button {
+            background-color: cadetblue;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: lightseagreen;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .hidden {
+            display: none;
+        }
+        .options {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .options label {
+            display: contents;
+            margin-right: 10px;
+        }
+        .options label:last-child>input {
+            margin-left: 15px;
+        }
+
+        .additional-options {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Convert to Table</h1>
+    <textarea id="inputText" rows="4" placeholder="Введите строку со значениями через слеш / или в столбик"></textarea>
+    <br>
+    <input type="text" id="removeText" placeholder="Введите текст для удаления через запятую (например, '1 point,Bonus')">
+    <div class="options">
+        <label><input type="radio" name="orientation" value="horizontal" checked> ➡️</label>
+        <label><input type="radio" name="orientation" value="vertical"> ⬇️</label>
+    </div>
+    <button onclick="convertToTable()">Convert to Table</button>
+    <div id="tableContainer"></div>
+    <textarea id="tempTextarea" class="hidden"></textarea>
+    <div class="additional-options" id="additionalOptions">
+        <input type="text" id="prefixText" placeholder="Введите текст перед содержимым ячейки">
+        <input type="text" id="suffixText" placeholder="Введите текст после содержимого ячейки">
+        <button onclick="updateTable()">Update Table</button>
+    </div>
+    <br><br>
+    
+
+    <script>
+        let originalValues = [];
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+        }
+
+        function convertToTable() {
+            // Get input values
+            let inputText = document.getElementById('inputText').value;
+            let removeText = document.getElementById('removeText').value;
+            const orientation = document.querySelector('input[name="orientation"]:checked').value;
+
+            // Protect the Peruvian currency by replacing "S/ " with a temporary placeholder
+            const peruvianCurrencyPlaceholder = '##PERU##';
+            inputText = inputText.replace(/S\/\s/g, peruvianCurrencyPlaceholder);
+
+            // Split input text by slash or newline and remove unwanted text
+            originalValues = inputText.split(/[/\n]/).map(value => value.trim());
+
+            // Process removal of multiple phrases
+            if (removeText) {
+                let removePhrases = removeText.split(',').map(phrase => escapeRegExp(phrase.trim()));
+                originalValues = originalValues.map(value => {
+                    removePhrases.forEach(phrase => {
+                        const regex = new RegExp(phrase, 'g');
+                        value = value.replace(regex, '').trim();
+                    });
+                    return value;
+                });
+            }
+
+            // Restore the Peruvian currency
+            originalValues = originalValues.map(value => value.replace(peruvianCurrencyPlaceholder, 'S/ '));
+
+            // Show additional options
+            document.getElementById('additionalOptions').style.display = 'flex';
+
+            // Create and display the table
+            updateTable();
+        }
+
+        function updateTable() {
+            const prefix = document.getElementById('prefixText').value;
+            const suffix = document.getElementById('suffixText').value;
+            const orientation = document.querySelector('input[name="orientation"]:checked').value;
+
+            // Create table
+            let table = '<table>';
+            let tabSeparatedText;
+            if (orientation === 'horizontal') {
+                table += '<tr>';
+                tabSeparatedText = originalValues.map(value => `${prefix}${value}${suffix}`).join('\t');
+                originalValues.forEach(value => {
+                    table += `<td>${prefix}${value}${suffix}</td>`;
+                });
+                table += '</tr>';
+            } else {
+                tabSeparatedText = originalValues.map(value => `${prefix}${value}${suffix}`).join('\r\n');
+                originalValues.forEach(value => {
+                    table += `<tr><td>${prefix}${value}${suffix}</td></tr>`;
+                });
+            }
+            table += '</table>';
+
+            // Display table
+            document.getElementById('tableContainer').innerHTML = table;
+
+            // Set the value of the temporary textarea for copying
+            document.getElementById('tempTextarea').value = tabSeparatedText;
+        }
+    </script>
+</body>
+</html>
