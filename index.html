@@ -67,12 +67,25 @@
         .options label:last-child>input {
             margin-left: 15px;
         }
-
         .additional-options {
             display: none;
             flex-direction: column;
             align-items: center;
             margin-top: 10px;
+        }
+        .compact-options {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .compact-options input[type="number"] {
+            width: 60px;
+            margin-left: 10px;
+            margin-right: 5px;
+        }
+        .compact-options button {
+            padding: 5px 10px;
+            margin-left: 5px;
         }
     </style>
 </head>
@@ -92,11 +105,14 @@
         <input type="text" id="prefixText" placeholder="Введите текст перед содержимым ячейки">
         <input type="text" id="suffixText" placeholder="Введите текст после содержимого ячейки">
         <button onclick="updateTable()">Update Table</button>
+        <div class="compact-options">
+            <input type="number" id="removeCharsCount" placeholder="Удалить">
+            <button onclick="removeCharsFromEnd()">❌</button>
+        </div>
     </div>
     <br><br>
-    
 
-    <script>
+     <script>
         let originalValues = [];
 
         function escapeRegExp(string) {
@@ -107,6 +123,8 @@
             // Get input values
             let inputText = document.getElementById('inputText').value;
             let removeText = document.getElementById('removeText').value;
+            console.log("Initial input text:", inputText);
+            console.log("Text to remove:", removeText);
             const orientation = document.querySelector('input[name="orientation"]:checked').value;
 
             // Protect the Peruvian currency by replacing "S/ " with a temporary placeholder
@@ -115,21 +133,26 @@
 
             // Split input text by slash or newline and remove unwanted text
             originalValues = inputText.split(/[/\n]/).map(value => value.trim());
+            console.log("Original values after split:", originalValues);
 
-            // Process removal of multiple phrases
+            // Process removal of multiple phrases or characters
             if (removeText) {
-                let removePhrases = removeText.split(',').map(phrase => escapeRegExp(phrase.trim()));
+                let removePhrases = removeText.split(',').map(phrase => escapeRegExp(phrase.trim())).filter(phrase => phrase !== '');
+                console.log("Remove phrases:", removePhrases);
                 originalValues = originalValues.map(value => {
                     removePhrases.forEach(phrase => {
                         const regex = new RegExp(phrase, 'g');
+                        console.log(`Removing phrase: ${phrase} from value: ${value}`);
                         value = value.replace(regex, '').trim();
                     });
+                    console.log("Value after removal:", value);
                     return value;
                 });
             }
 
             // Restore the Peruvian currency
             originalValues = originalValues.map(value => value.replace(peruvianCurrencyPlaceholder, 'S/ '));
+            console.log("Final original values:", originalValues);
 
             // Show additional options
             document.getElementById('additionalOptions').style.display = 'flex';
@@ -139,8 +162,15 @@
         }
 
         function updateTable() {
-            const prefix = document.getElementById('prefixText').value;
-            const suffix = document.getElementById('suffixText').value;
+            let prefix = document.getElementById('prefixText').value;
+            let suffix = document.getElementById('suffixText').value;
+            console.log("Prefix:", `'${prefix}'`);
+            console.log("Suffix:", `'${suffix}'`);
+            
+            // Replace spaces with &nbsp;
+            prefix = prefix.replace(/ /g, '&nbsp;');
+            suffix = suffix.replace(/ /g, '&nbsp;');
+
             const orientation = document.querySelector('input[name="orientation"]:checked').value;
 
             // Create table
@@ -150,12 +180,14 @@
                 table += '<tr>';
                 tabSeparatedText = originalValues.map(value => `${prefix}${value}${suffix}`).join('\t');
                 originalValues.forEach(value => {
+                    console.log(`Adding prefix '${prefix}' and suffix '${suffix}' to value: '${value}'`);
                     table += `<td>${prefix}${value}${suffix}</td>`;
                 });
                 table += '</tr>';
             } else {
                 tabSeparatedText = originalValues.map(value => `${prefix}${value}${suffix}`).join('\r\n');
                 originalValues.forEach(value => {
+                    console.log(`Adding prefix '${prefix}' and suffix '${suffix}' to value: '${value}'`);
                     table += `<tr><td>${prefix}${value}${suffix}</td></tr>`;
                 });
             }
@@ -166,6 +198,15 @@
 
             // Set the value of the temporary textarea for copying
             document.getElementById('tempTextarea').value = tabSeparatedText;
+        }
+
+        function removeCharsFromEnd() {
+            const removeCharsCount = parseInt(document.getElementById('removeCharsCount').value, 10);
+            if (isNaN(removeCharsCount) || removeCharsCount <= 0) {
+                return;
+            }
+            originalValues = originalValues.map(value => value.slice(0, -removeCharsCount));
+            updateTable();
         }
     </script>
 </body>
